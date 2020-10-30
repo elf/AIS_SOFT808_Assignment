@@ -10,6 +10,14 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 
 categories = ["Content structure / ideas", "Language and Delivery",  "Technical"]
+colours = {
+    4: "#77FF77",
+    3: "#FFFF77",
+    2: "#FFAA77",
+    1: "#FF6666",
+    0: "#77CCCC",
+}
+
 evaluation_parameters = [
     [
         {
@@ -527,6 +535,7 @@ def menu_about():
 
 # Create instance
 win = tk.Tk()
+win.resizable(0,0)
 
 # Add a title
 win.title("Student Evaluation")
@@ -592,14 +601,15 @@ for i in range(len(categories)):
 
         max_mark = 0
         for k in range(evaluate_count):
+            colour = colours[evaluation_parameter["evaluations"][k]["value"]]
             label = str(evaluation_parameter["evaluations"][k]["value"]) + " - " + evaluation_parameter["evaluations"][k]["label"]
-            r = tk.Radiobutton(category_frame, text = label, variable = evaluate_values[y], width = 24,
+            r = tk.Radiobutton(category_frame, text = label, variable = evaluate_values[y], width = 22, bg = colour,
                                     value = evaluation_parameter["evaluations"][k]["value"], command = click_evaluation(y, k))
             r.grid(column = k + 2, row = y * 2, sticky = tk.W)
             r.configure(state = tk.DISABLED)
 
-            d = tk.Message(category_frame, text = evaluation_parameter["evaluations"][k]["description"], width = 150)
-            d.grid(column = k + 2, row = y * 2 + 1, sticky = tk.W)
+            d = tk.Message(category_frame, text = evaluation_parameter["evaluations"][k]["description"], width = 150, bg = colour)
+            d.grid(column = k + 2, row = y * 2 + 1, sticky = tk.W + tk.E + tk.N + tk.S)
             d.grid_remove()
 
             evaluate_radios[y].append(r)
@@ -612,12 +622,12 @@ for i in range(len(categories)):
 
         label = "Not yet"
         r = tk.Radiobutton(category_frame, text = label, variable = evaluate_values[y],
-                                    value = 0, command = click_evaluation(y, k))
+                                    value = 0, bg = colours[0], command = click_evaluation(y, k))
         r.grid(column = evaluate_count + 2, row = y * 2, sticky = tk.W)
         r.configure(state = tk.DISABLED)
 
-        d = tk.Message(category_frame, text = "", width = 150)
-        d.grid(column = evaluate_count + 2, row = y * 2 + 1, sticky = tk.W)
+        d = tk.Message(category_frame, text = "", bg = colours[0])
+        d.grid(column = evaluate_count + 2, row = y * 2 + 1, sticky = tk.W + tk.E + tk.N + tk.S)
         d.grid_remove()
 
         evaluate_radios[y].append(r)
