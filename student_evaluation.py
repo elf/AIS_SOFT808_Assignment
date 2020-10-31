@@ -3,11 +3,13 @@ from tkinter import ttk
 from tkinter import Menu
 from tkinter import messagebox
 from tkinter import filedialog
+from tkinter import font
 import json
 from docx import Document
 from docx.shared import Inches,RGBColor,Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
+from docx.dml.color import ColorFormat
 
 categories = ["Content structure / ideas", "Language and Delivery",  "Technical"]
 colours = {
@@ -332,28 +334,31 @@ evaluate_descriptions = []
 evaluate_values = []
 total_marks = 0
 
-def get_mark_string(result_marks):
+def get_result_string(result_marks):
     format = "Result: {result_marks:d} / {total_marks}"
     mark_string = format.format(result_marks = result_marks, total_marks = total_marks)
     #print(mark_string)
     return mark_string
 
+def get_marks():
+    sum = 0
+    y = 0
+    for i in range(len(categories)):
+        for j in range(len(evaluation_parameters[i])):
+            evaluation_parameter = evaluation_parameters[i][j]
+            evaluate_count = len(evaluation_parameter["evaluations"])
+
+            selected = evaluate_values[y].get()
+            if (selected < evaluate_count):
+                sum = sum + evaluation_parameter["evaluations"][selected]["value"]
+
+            y = y + 1
+
+    return sum
+
 def click_evaluation(y, k):
     def x():
-        sum = 0
-
-        y = 0
-        for i in range(len(categories)):
-            for j in range(len(evaluation_parameters[i])):
-                evaluation_parameter = evaluation_parameters[i][j]
-                evaluate_count = len(evaluation_parameter["evaluations"])
-
-                sum = sum + evaluate_values[y].get()
-
-                y = y + 1
-
-        #print(sum)
-        result_label["text"] = get_mark_string(sum)
+        result_label["text"] = get_result_string(get_marks())
         #messagebox.showinfo("title", "body" + str(y) + str(k))
     return x
 
@@ -366,27 +371,27 @@ def click_evaluation_selection(clicked_i, clicked_j, clicked_y, evaluate_count):
                 evaluate_count = len(evaluation_parameter["evaluations"])
                 for k in range(len(evaluation_parameter["evaluations"]) + 1):
                     if y == clicked_y:
-                        evaluate_radios[y][k].configure(state = tk.NORMAL)
+                        #evaluate_radios[y][k].configure(state = tk.NORMAL)
                         evaluate_descriptions[y][k].grid()
-                    else:
-                        evaluate_radios[y][k].configure(state = tk.DISABLED)
-                        evaluate_descriptions[y][k].grid_remove()
+                    #else:
+                        #evaluate_radios[y][k].configure(state = tk.DISABLED)
+                        #evaluate_descriptions[y][k].grid_remove()
                 y = y + 1
     return x
 
 def create_result_json_dict():
-    marks = []
+    selected = []
     for i in range(len(evaluate_values)):
-        marks.append(evaluate_values[i].get())
+        selected.append(evaluate_values[i].get())
     
     data = {
         "student" : {
-            "name" : student_name_entered.get(),
+            "name" : student_name_first_entered.get() + " " + student_name_last_entered.get(),
             "id" : student_id_entered.get(),
         },
         "topic" : topic_entered.get(),
         "total_marks" : total_marks,
-        "evaluations" : marks,
+        "selects" : selected,
     }
 
     return data
@@ -399,8 +404,11 @@ def validate_fill_in():
     message = ""
     result = True
 
-    if student_name_entered.get() == "":
-        message += "* Missing Student name\n"
+    if student_name_first_entered.get() == "":
+        message += "* Missing Student name (first name)\n"
+
+    if student_name_last_entered.get() == "":
+        message += "* Missing Student name (last name)\n"
 
     if student_id_entered.get() == "":
         message += "* Missing Student ID\n"
@@ -414,7 +422,7 @@ def validate_fill_in():
             evaluation_parameter = evaluation_parameters[i][j]
             evaluate_count = len(evaluation_parameter["evaluations"])
 
-            if evaluate_values[y].get() == 0:
+            if evaluate_count < evaluate_values[y].get():
                 txt = "* {label:s} is not assessed.\n"
                 message += txt.format(label = evaluation_parameter["label"])
 
@@ -442,85 +450,59 @@ def menu_export_as_word():
         txt = "{student_id:s}.docx"
         filename = txt.format(student_id = student_id_entered.get())
         path = tk.filedialog.asksaveasfile(mode = "w", initialfile = filename, defaultextension = "docx")
-        print("\n+++++++++++++++++\n")
-        print (path)
-        print (path.name)
-        print("\n+++++++++++++++++\n")
         filename = path.name
         path.close()
         do_exportAsWord(filename)
 
 def do_exportAsWord(filename):
-    #jsonFilename = tk.filedialog.askopenfilename()
-    #jsonfile = open(jsonFilename)
-
-    #text = jsonfile.read()
-    #j = json.loads(text)
     j = create_result_json_dict()
-    print(j)
 
     studentId = j["student"]["id"]
 
-    result_marks = 0;
-    for i in range(len(evaluate_values)):
-        result_marks += evaluate_values[i].get()
     txt = "{result_marks:d} / {total_marks:d}"
-    mark = txt.format(result_marks = result_marks, total_marks = total_marks)
+    mark = txt.format(result_marks = get_marks(), total_marks = total_marks)
     doc = Document()
     doc.add_paragraph('Student name: ' + j["student"]["name"] + "\t" + 'Student ID: ' + j["student"]["id"] + "\t\tResult: " + mark)
     doc.add_paragraph('Topic of Presentation: ' + j["topic"])
 
-    table =doc.add_table(rows=15,cols=5)
+    table = doc.add_table(rows = 15, cols = 5)
     table.style = 'TableGrid'
 
-    levels = ["4 -Excellent", "3 - Good",  "2 - Fair", "1 - Poor"]
     rowIndex = 0
     jIndex = 0
-    #part 1
-    table.cell(rowIndex,0).text = categories[0]
-    for i in range(len(levels)):
-        table.cell(rowIndex,i+1).text = levels[i]
 
-    for i in range(len(evaluation_parameters[0])):
-        rowIndex = rowIndex +1
-        table.cell(rowIndex,0).text = evaluation_parameters[0][i]["label"]
-        score = j["evaluations"][jIndex]
-        if 0 < score:
-            description = evaluation_parameters[0][i]["evaluations"][4-score]["description"]
-            table.cell(rowIndex,5-score).text = description
-        jIndex = jIndex+1
+    for category_idx in range(len(categories)):
+        table.cell(rowIndex, category_idx).text = categories[category_idx]
+        table.cell(rowIndex, category_idx).paragraphs[0].runs[0].font.bold = True
 
-    #part 2
-    rowIndex = rowIndex +1
-    table.cell(rowIndex,0).text = categories[1]
-    for i in range(len(levels)):
-        table.cell(rowIndex,i+1).text = levels[i]
+        #
+        # label
+        #
+        for category_row_index in range(len(evaluation_parameters[category_idx])):
+            options = evaluation_parameters[category_idx][category_row_index]["evaluations"]
 
-    for i in range(len(evaluation_parameters[1])):
-        rowIndex = rowIndex +1
-        table.cell(rowIndex,0).text = evaluation_parameters[1][i]["label"]
-        score = j["evaluations"][jIndex]
-        if 0 < score:
-            description = evaluation_parameters[1][i]["evaluations"][4-score]["description"]
-            table.cell(rowIndex,5-score).text = description
-        jIndex = jIndex+1
+            for option_index in range(len(options)):
+                option = options[option_index]
+                #print(option)
+                txt = "{score:d} - {label:s}"
+                table.cell(rowIndex, option_index + 1).text = txt.format(score = option["value"], label = option["label"])
+                table.cell(rowIndex, option_index + 1).paragraphs[0].runs[0].font.bold = True
 
-    #part 3
-    rowIndex = rowIndex +1
-    table.cell(rowIndex,0).text = categories[2]
-    for i in range(len(levels)):
-        table.cell(rowIndex,i+1).text = levels[i]
+        for category_row_index in range(len(evaluation_parameters[category_idx])):
+            options = evaluation_parameters[category_idx][category_row_index]["evaluations"]
+            rowIndex = rowIndex + 1
+            option = evaluation_parameters[category_idx][category_row_index]
+            table.cell(rowIndex,0).text = option["label"]
+            selected = j["selects"][jIndex]
 
-    for i in range(len(evaluation_parameters[2])):
-        rowIndex = rowIndex +1
-        table.cell(rowIndex,0).text = evaluation_parameters[2][i]["label"]
-        score = j["evaluations"][jIndex]
-        if 0 < score:
-            #print("score: " +str(score))
-            #print("index: " + str(i))
-            description = evaluation_parameters[2][i]["evaluations"][4-score]["description"]
-            table.cell(rowIndex,5-score).text = description
-        jIndex = jIndex+1
+            for option_index in range(len(options)):
+                option = options[option_index]
+                table.cell(rowIndex, option_index + 1).text = option["description"]
+                if (selected == option_index):
+                    table.cell(rowIndex, option_index + 1).paragraphs[0].runs[0].font.bold = True
+
+            jIndex = jIndex + 1
+
 
     doc.save(filename)
     messagebox.showinfo("title", "save as " + filename)
@@ -535,82 +517,109 @@ def menu_about():
 
 # Create instance
 win = tk.Tk()
-win.resizable(0,0)
+win.resizable(0, 0)
 
 # Add a title
 win.title("Student Evaluation")
 
+default_font = tk.font.nametofont("TkDefaultFont")
+small_font = tk.font.Font(size = default_font.cget("size") - 1)
+
+#
+#  Frames
+#
+
 student_frame = ttk.LabelFrame(win, text = "Student")
 student_frame.grid(column = 0, row = 0, padx = 8, pady = 4, sticky = tk.W)
+#student_frame.pack(expand = True, fill = tk.X)
 
 result_frame = ttk.LabelFrame(win, text = "Result")
-result_frame.grid(column = 1, row = 0, padx = 8, pady = 4, sticky = tk.W)
+result_frame.grid(column = 1, row = 0, padx = 8, pady = 4, sticky = tk.E + tk.W + tk.N + tk.S)
+#result_frame.pack(side = tk.RIGHT, expand = True, fill = tk.X)
 
 evaluation_frame = ttk.LabelFrame(win, text = "Evaluation")
 evaluation_frame.grid(column = 0, row = 1, columnspan = 2, padx = 8, pady = 4)
+#evaluation_frame.pack(side = tk.BOTTOM, expand = True, fill = tk.X)
 
 #
 #  Student name
 #
-label = ttk.Label(student_frame, text = "Student name")
-label.grid(column = 0, row = 0, sticky = tk.W)
+label = ttk.Label(student_frame, text = "Student name", )
+label.grid(column = 0, row = 1, sticky = tk.W, ipady = 4)
 
-student_name = tk.StringVar()
-student_name_entered = ttk.Entry(student_frame, width = 30, textvariable = student_name)
-student_name_entered.grid(column = 1, row = 0, sticky = tk.W)
+label = ttk.Label(student_frame, text = "First name", font = small_font)
+label.grid(column = 1, row = 0, sticky = tk.W)
+label = ttk.Label(student_frame, text = "Last name", font = small_font)
+label.grid(column = 2, row = 0, sticky = tk.W)
+
+student_first_name = tk.StringVar()
+student_last_name = tk.StringVar()
+student_name_first_entered = ttk.Entry(student_frame, width = 15, textvariable = student_first_name)
+student_name_first_entered.grid(column = 1, row = 1, sticky = tk.W)
+student_name_last_entered = ttk.Entry(student_frame, width = 15, textvariable = student_last_name)
+student_name_last_entered.grid(column = 2, row = 1, sticky = tk.W)
 
 #
 #  Student ID
 #
 label = ttk.Label(student_frame, text = "Student ID")
-label.grid(column = 2, row = 0, sticky = tk.W)
+label.grid(column = 5, row = 1, sticky = tk.W, ipadx = 10, ipady = 4)
 
 student_id = tk.StringVar()
 student_id_entered = ttk.Entry(student_frame, width = 12, textvariable = student_id)
-student_id_entered.grid(column = 3, row = 0, sticky = tk.W)
+student_id_entered.grid(column = 6, row = 1, sticky = tk.W)
 
 #
 #  Topic of presentation
 #
 label = ttk.Label(student_frame, text = "Topic of presentation")
-label.grid(column = 0, row = 1, sticky = tk.W)
+label.grid(column = 0, row = 2, sticky = tk.W, ipady = 4)
 
 topic = tk.StringVar()
 topic_entered = ttk.Entry(student_frame, width = 30, textvariable = topic)
-topic_entered.grid(column = 1, row = 1, sticky = tk.W)
+topic_entered.grid(column = 1, row = 2, columnspan = 2, sticky = tk.W)
 
 #
 #  Result
 #
-result_label = ttk.Label(result_frame, text = get_mark_string(0))
-result_label.grid(column = 0, row = 0, sticky = tk.W)
+result_label = ttk.Label(result_frame, text = get_result_string(0), width = 30)
+result_label.grid(column = 0, row = 0, sticky = tk.E)
+
+export_button = ttk.Button(result_frame, text = "Export as Word file", command = menu_export_as_word, width = 20)
+export_button.grid(column = 1, row = 0, sticky = tk.E + tk.N + tk.S)
 
 y = 0
 
+tab_control = ttk.Notebook(evaluation_frame)
+tab_control.grid(column = 0, row = 0)
+tab_frames = []
 for i in range(len(categories)):
-    category_frame = ttk.LabelFrame(evaluation_frame, text = categories[i])
-    category_frame.grid(column = 0, row = y * 2, sticky = tk.W)
+    category_frame = ttk.LabelFrame(tab_control)
+    tab_control.add(category_frame, text = categories[i])
+    #category_frame.grid(column = 0, row = y * 2, sticky = tk.W)
+    tab_frames.append(category_frame)
 
     for j in range(len(evaluation_parameters[i])):
         evaluate_values.append(tk.IntVar())
         evaluate_radios.append([])
         evaluate_descriptions.append([])
-        evaluate_values[y].set(0)
         evaluation_parameter = evaluation_parameters[i][j]
         evaluate_count = len(evaluation_parameter["evaluations"])
+        evaluate_values[y].set(evaluate_count + 1)
 
         max_mark = 0
         for k in range(evaluate_count):
             colour = colours[evaluation_parameter["evaluations"][k]["value"]]
             label = str(evaluation_parameter["evaluations"][k]["value"]) + " - " + evaluation_parameter["evaluations"][k]["label"]
-            r = tk.Radiobutton(category_frame, text = label, variable = evaluate_values[y], width = 22, bg = colour,
-                                    value = evaluation_parameter["evaluations"][k]["value"], command = click_evaluation(y, k))
+            r = tk.Radiobutton(category_frame, text = label, variable = evaluate_values[y], width = 20, bg = colour,
+                                    value = k, command = click_evaluation(y, k))
             r.grid(column = k + 2, row = y * 2, sticky = tk.W)
-            r.configure(state = tk.DISABLED)
+            #r.configure(state = tk.DISABLED)
 
-            d = tk.Message(category_frame, text = evaluation_parameter["evaluations"][k]["description"], width = 150, bg = colour)
+            description = evaluation_parameter["evaluations"][k]["description"]
+            d = tk.Message(category_frame, text = description, bg = colour, font = small_font)
             d.grid(column = k + 2, row = y * 2 + 1, sticky = tk.W + tk.E + tk.N + tk.S)
-            d.grid_remove()
+            #d.grid_remove()
 
             evaluate_radios[y].append(r)
             evaluate_descriptions[y].append(d)
@@ -621,25 +630,26 @@ for i in range(len(categories)):
         total_marks = total_marks + max_mark
 
         label = "Not yet"
+        print(evaluate_count)
         r = tk.Radiobutton(category_frame, text = label, variable = evaluate_values[y],
-                                    value = 0, bg = colours[0], command = click_evaluation(y, k))
+                                    value = evaluate_count + 1, bg = colours[0], command = click_evaluation(y, k))
         r.grid(column = evaluate_count + 2, row = y * 2, sticky = tk.W)
-        r.configure(state = tk.DISABLED)
+        #r.configure(state = tk.DISABLED)
 
-        d = tk.Message(category_frame, text = "", bg = colours[0])
+        d = tk.Message(category_frame, text = "", bg = colours[0], font = small_font)
         d.grid(column = evaluate_count + 2, row = y * 2 + 1, sticky = tk.W + tk.E + tk.N + tk.S)
-        d.grid_remove()
+        #d.grid_remove()
 
         evaluate_radios[y].append(r)
         evaluate_descriptions[y].append(d)
 
-        button = ttk.Button(category_frame, text = evaluation_parameter["label"], command = click_evaluation_selection(i, j, y, evaluate_count), width = 20)
-        button.grid(column = 1, row = y * 2, sticky = tk.W)
+        category_label = ttk.Label(category_frame, text = evaluation_parameter["label"], width = 20)
+        category_label.grid(column = 1, row = y * 2, sticky = tk.W)
 
         y = y + 1
 
 
-result_label["text"] = get_mark_string(0)
+result_label["text"] = get_result_string(0)
 
 menu_bar = Menu(win)
 win.config(menu = menu_bar)
