@@ -13,11 +13,11 @@ from docx.dml.color import ColorFormat
 
 categories = ["Content structure / ideas", "Language and Delivery",  "Technical"]
 colours = {
-    4: "#77FF77",
-    3: "#FFFF77",
-    2: "#FFAA77",
-    1: "#FF6666",
-    0: "#77CCCC",
+    4: "#F2F2F2",
+    3: "#E6E6E6",
+    2: "#D9D9D9",
+    1: "#CCCCCC",
+    0: "#BFBFBF",
 }
 
 evaluation_parameters = [
