@@ -526,7 +526,7 @@ def menu_exit():
     exit()
 
 def menu_about():
-    messagebox.showinfo("About", "This application is for student evaluation created by SUX2 group in SOFT808 in S2 2020.")
+    messagebox.showinfo("About", "This application is for student evaluation created by SUX2 group in SOFT808 in S3 2020.")
 
 class CommentDialog(simpledialog.Dialog):
     def __init__(self, master,
