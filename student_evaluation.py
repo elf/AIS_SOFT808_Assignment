@@ -361,7 +361,6 @@ def get_marks():
 def click_evaluation(y, k):
     def x():
         result_label["text"] = get_result_string(get_marks())
-        #messagebox.showinfo("title", "body" + str(y) + str(k))
     return x
 
 def click_evaluation_selection(clicked_i, clicked_j, clicked_y, evaluate_count):
@@ -373,11 +372,7 @@ def click_evaluation_selection(clicked_i, clicked_j, clicked_y, evaluate_count):
                 evaluate_count = len(evaluation_parameter["evaluations"])
                 for k in range(len(evaluation_parameter["evaluations"]) + 1):
                     if y == clicked_y:
-                        #evaluate_radios[y][k].configure(state = tk.NORMAL)
                         evaluate_descriptions[y][k].grid()
-                    #else:
-                        #evaluate_radios[y][k].configure(state = tk.DISABLED)
-                        #evaluate_descriptions[y][k].grid_remove()
                 y = y + 1
     return x
 
@@ -564,6 +559,15 @@ def show_comment_dialog(label, comment):
         comment.set(CommentDialog("Enter Comment.", prompt.format(label = label), initialvalue = comment.get()).result)
     return x
 
+def reset_parameters():
+    student_first_name.set("")
+    student_last_name.set("")
+    student_id.set("")
+    topic.set("")
+    for i in range(len(evaluate_values)):
+        evaluate_values[i].set(4)
+
+    result_label["text"] = get_result_string(get_marks())
 
 # Create instance
 win = tk.Tk()
@@ -644,7 +648,10 @@ export_button.grid(column = 1, row = 0, sticky = tk.E + tk.N + tk.S)
 
 result_comment = tk.StringVar()
 result_frame_comment_button = ttk.Button(result_frame, text = "+Comment", command = show_comment_dialog("Result", result_comment))
-result_frame_comment_button.grid(column = 0, row = 1, sticky = tk.W + tk.S)
+result_frame_comment_button.grid(column = 0, row = 3, sticky = tk.W + tk.S)
+
+result_reset_button = ttk.Button(result_frame, text = "Reset", command = reset_parameters, width = 20)
+result_reset_button.grid(column = 1, row = 1, sticky = tk.E + tk.N + tk.S, pady = 10)
 
 y = 0
 
@@ -689,9 +696,8 @@ for i in range(len(categories)):
 
         label = "Not yet"
         r = tk.Radiobutton(category_frame, text = label, variable = evaluate_values[y],
-                                    value = evaluate_count + 1, bg = colours[0], command = click_evaluation(y, k))
+                                    value = evaluate_count, bg = colours[0], command = click_evaluation(y, evaluate_count))
         r.grid(column = evaluate_count + 2, row = y * 2, sticky = tk.W)
-        #r.configure(state = tk.DISABLED)
 
         d = tk.Message(category_frame, text = "", bg = colours[0], font = small_font)
         d.grid(column = evaluate_count + 2, row = y * 2 + 1, sticky = tk.W + tk.E + tk.N + tk.S)
