@@ -4,6 +4,8 @@ from tkinter import Menu
 from tkinter import messagebox
 from tkinter import filedialog
 from tkinter import font
+from tkinter import simpledialog
+from tkinter.simpledialog  import _QueryString
 import json
 from docx import Document
 from docx.shared import Inches,RGBColor,Pt
@@ -332,12 +334,12 @@ evaluation_parameters = [
 evaluate_radios = []
 evaluate_descriptions = []
 evaluate_values = []
+evaluate_comments = []
 total_marks = 0
 
 def get_result_string(result_marks):
     format = "Result: {result_marks:d} / {total_marks}"
     mark_string = format.format(result_marks = result_marks, total_marks = total_marks)
-    #print(mark_string)
     return mark_string
 
 def get_marks():
@@ -464,42 +466,58 @@ def do_exportAsWord(filename):
     doc = Document()
     doc.add_paragraph('Student name: ' + j["student"]["name"] + "\t" + 'Student ID: ' + j["student"]["id"] + "\t\tResult: " + mark)
     doc.add_paragraph('Topic of Presentation: ' + j["topic"])
+    table = doc.add_table(rows = 6, cols = 1)
+    table.style = 'TableNormal'
 
-    table = doc.add_table(rows = 15, cols = 5)
+    table.cell(0, 0).text = "Student name:"
+    table.cell(1, 0).text = j["student"]["name"]
+    table.cell(2, 0).text = "Student ID:"
+    table.cell(3, 0).text = j["student"]["id"]
+    table.cell(4, 0).text = mark
+
+    if student_comment.get() != "":
+        table.cell(0, 0).paragraphs[0].runs[0].add_comment(student_comment.get(), "Student Evaluation App")
+
+    if result_comment.get() != "":
+        table.cell(4, 0).paragraphs[0].runs[0].add_comment(result_comment.get(), "Student Evaluation App")
+
+    table = doc.add_table(rows = 13, cols = 5)
     table.style = 'TableGrid'
 
-    rowIndex = 0
+    row_idx = 0
     jIndex = 0
 
     for category_idx in range(len(categories)):
-        table.cell(rowIndex, category_idx).text = categories[category_idx]
-        table.cell(rowIndex, category_idx).paragraphs[0].runs[0].font.bold = True
+        table.cell(row_idx, category_idx).text = categories[category_idx]
+        table.cell(row_idx, category_idx).paragraphs[0].runs[0].font.bold = True
 
         #
         # label
         #
-        for category_row_index in range(len(evaluation_parameters[category_idx])):
-            options = evaluation_parameters[category_idx][category_row_index]["evaluations"]
+        for category_row_idx in range(len(evaluation_parameters[category_idx])):
+            options = evaluation_parameters[category_idx][category_row_idx]["evaluations"]
 
             for option_index in range(len(options)):
                 option = options[option_index]
-                #print(option)
                 txt = "{score:d} - {label:s}"
-                table.cell(rowIndex, option_index + 1).text = txt.format(score = option["value"], label = option["label"])
-                table.cell(rowIndex, option_index + 1).paragraphs[0].runs[0].font.bold = True
+                table.cell(row_idx, option_index + 1).text = txt.format(score = option["value"], label = option["label"])
+                table.cell(row_idx, option_index + 1).paragraphs[0].runs[0].font.bold = True
 
-        for category_row_index in range(len(evaluation_parameters[category_idx])):
-            options = evaluation_parameters[category_idx][category_row_index]["evaluations"]
-            rowIndex = rowIndex + 1
-            option = evaluation_parameters[category_idx][category_row_index]
-            table.cell(rowIndex,0).text = option["label"]
+        for category_row_idx in range(len(evaluation_parameters[category_idx])):
+            options = evaluation_parameters[category_idx][category_row_idx]["evaluations"]
+            row_idx = row_idx + 1
+            option = evaluation_parameters[category_idx][category_row_idx]
+            table.cell(row_idx, 0).text = option["label"]
+            if evaluate_comments[jIndex].get() != "":
+                table.cell(row_idx, 0).paragraphs[0].runs[0].add_comment(evaluate_comments[jIndex].get(), "Student Evaluation App")
+
             selected = j["selects"][jIndex]
 
             for option_index in range(len(options)):
                 option = options[option_index]
-                table.cell(rowIndex, option_index + 1).text = option["description"]
+                table.cell(row_idx, option_index + 1).text = option["description"]
                 if (selected == option_index):
-                    table.cell(rowIndex, option_index + 1).paragraphs[0].runs[0].font.bold = True
+                    table.cell(row_idx, option_index + 1).paragraphs[0].runs[0].font.bold = True
 
             jIndex = jIndex + 1
 
@@ -514,6 +532,38 @@ def menu_exit():
 
 def menu_about():
     messagebox.showinfo("About", "This application is for student evaluation created by SUX2 group in SOFT808 in S2 2020.")
+
+class CommentDialog(simpledialog.Dialog):
+    def __init__(self, master,
+                 text='', buttons=[], default=None, cancel=None,
+                 title=None, class_=None):
+        pass
+
+    def body(self, master):
+        self.comment = tk.StringVar()
+        self.comment_entered = ttk.Entry(self.comment, width = 12, textvariable = self.comment)
+        self.comment_entered.pack(side=tk.LEFT, padx=5, pady=5)
+
+    #def buttonbox(self):
+
+class CommentDialog(_QueryString):
+    def __init__(self, *args, **kw):
+        _QueryString.__init__(self, *args, **kw)
+
+    def body(self, master):
+        entry = _QueryString.body(self, master)
+        entry.configure(width = 50)
+        return entry
+
+    def getresult(self):
+        return self.entry.get()
+
+def show_comment_dialog(label, comment):
+    def x():
+        prompt = "Enter Comment for {label:s}"
+        comment.set(CommentDialog("Enter Comment.", prompt.format(label = label), initialvalue = comment.get()).result)
+    return x
+
 
 # Create instance
 win = tk.Tk()
@@ -579,6 +629,10 @@ topic = tk.StringVar()
 topic_entered = ttk.Entry(student_frame, width = 30, textvariable = topic)
 topic_entered.grid(column = 1, row = 2, columnspan = 2, sticky = tk.W)
 
+student_comment = tk.StringVar()
+student_frame_comment_button = ttk.Button(student_frame, text = "+Comment", command = show_comment_dialog("Student", student_comment))
+student_frame_comment_button.grid(column = 0, row = 3, sticky = tk.W)
+
 #
 #  Result
 #
@@ -587,6 +641,10 @@ result_label.grid(column = 0, row = 0, sticky = tk.E)
 
 export_button = ttk.Button(result_frame, text = "Export as Word file", command = menu_export_as_word, width = 20)
 export_button.grid(column = 1, row = 0, sticky = tk.E + tk.N + tk.S)
+
+result_comment = tk.StringVar()
+result_frame_comment_button = ttk.Button(result_frame, text = "+Comment", command = show_comment_dialog("Result", result_comment))
+result_frame_comment_button.grid(column = 0, row = 1, sticky = tk.W + tk.S)
 
 y = 0
 
@@ -630,7 +688,6 @@ for i in range(len(categories)):
         total_marks = total_marks + max_mark
 
         label = "Not yet"
-        print(evaluate_count)
         r = tk.Radiobutton(category_frame, text = label, variable = evaluate_values[y],
                                     value = evaluate_count + 1, bg = colours[0], command = click_evaluation(y, k))
         r.grid(column = evaluate_count + 2, row = y * 2, sticky = tk.W)
@@ -645,6 +702,11 @@ for i in range(len(categories)):
 
         category_label = ttk.Label(category_frame, text = evaluation_parameter["label"], width = 20)
         category_label.grid(column = 1, row = y * 2, sticky = tk.W)
+
+        evaluate_comment = tk.StringVar()
+        evaluate_comment_button = ttk.Button(category_frame, text = "+Comment", command = show_comment_dialog(evaluation_parameter["label"], evaluate_comment))
+        evaluate_comment_button.grid(column = 1, row = y * 2 + 1, sticky = tk.W + tk.N)
+        evaluate_comments.append(evaluate_comment)
 
         y = y + 1
 
