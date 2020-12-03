@@ -5,15 +5,15 @@ from tkinter import messagebox
 from tkinter import filedialog
 from tkinter import font
 from tkinter import simpledialog
-from tkinter.simpledialog  import _QueryString
+from tkinter.simpledialog import _QueryString
 import json
 from docx import Document
-from docx.shared import Inches,RGBColor,Pt
+from docx.shared import Inches, RGBColor, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.dml.color import ColorFormat
 
-categories = ["Content structure / ideas", "Language and Delivery",  "Technical"]
+categories = ["Content structure / ideas", "Language and Delivery", "Technical"]
 colours = {
     4: "#F2F2F2",
     3: "#E6E6E6",
@@ -337,10 +337,12 @@ evaluate_values = []
 evaluate_comments = []
 total_marks = 0
 
+
 def get_result_string(result_marks):
     format = "Result: {result_marks:d} / {total_marks}"
-    mark_string = format.format(result_marks = result_marks, total_marks = total_marks)
+    mark_string = format.format(result_marks=result_marks, total_marks=total_marks)
     return mark_string
+
 
 def get_marks():
     sum = 0
@@ -358,10 +360,13 @@ def get_marks():
 
     return sum
 
+
 def click_evaluation(y, k):
     def x():
         result_label["text"] = get_result_string(get_marks())
+
     return x
+
 
 def click_evaluation_selection(clicked_i, clicked_j, clicked_y, evaluate_count):
     def x():
@@ -374,28 +379,32 @@ def click_evaluation_selection(clicked_i, clicked_j, clicked_y, evaluate_count):
                     if y == clicked_y:
                         evaluate_descriptions[y][k].grid()
                 y = y + 1
+
     return x
+
 
 def create_result_json_dict():
     selected = []
     for i in range(len(evaluate_values)):
         selected.append(evaluate_values[i].get())
-    
+
     data = {
-        "student" : {
-            "name" : student_name_first_entered.get() + " " + student_name_last_entered.get(),
-            "id" : student_id_entered.get(),
+        "student": {
+            "name": student_name_first_entered.get() + " " + student_name_last_entered.get(),
+            "id": student_id_entered.get(),
         },
-        "topic" : topic_entered.get(),
-        "total_marks" : total_marks,
-        "selects" : selected,
+        "topic": topic_entered.get(),
+        "total_marks": total_marks,
+        "selects": selected,
     }
 
     return data
 
+
 def create_result_json():
     data = create_result_json_dict()
     return json.dumps(data)
+
 
 def validate_fill_in():
     message = ""
@@ -421,10 +430,9 @@ def validate_fill_in():
 
             if evaluate_count < evaluate_values[y].get():
                 txt = "* {label:s} is not assessed.\n"
-                message += txt.format(label = evaluation_parameter["label"])
+                message += txt.format(label=evaluation_parameter["label"])
 
             y = y + 1
-
 
     if (message != ""):
         messagebox.showinfo("Error", message)
@@ -432,24 +440,27 @@ def validate_fill_in():
 
     return result
 
+
 def menu_save():
-    if (validate_fill_in()):
+    if validate_fill_in():
         json = create_result_json()
 
         txt = "{student_id:s}.json"
-        file_name = txt.format(txt, student_id = student_id_entered.get())
+        file_name = txt.format(txt, student_id=student_id_entered.get())
 
         with open(file_name, mode='w') as f:
             f.write(json)
 
+
 def menu_export_as_word():
-    if (validate_fill_in()):
+    if validate_fill_in():
         txt = "{student_id:s}.docx"
-        filename = txt.format(student_id = student_id_entered.get())
-        path = tk.filedialog.asksaveasfile(mode = "w", initialfile = filename, defaultextension = "docx")
+        filename = txt.format(student_id=student_id_entered.get())
+        path = tk.filedialog.asksaveasfile(mode="w", initialfile=filename, defaultextension="docx")
         filename = path.name
         path.close()
         do_exportAsWord(filename)
+
 
 def do_exportAsWord(filename):
     j = create_result_json_dict()
@@ -457,11 +468,12 @@ def do_exportAsWord(filename):
     studentId = j["student"]["id"]
 
     txt = "{result_marks:d} / {total_marks:d}"
-    mark = txt.format(result_marks = get_marks(), total_marks = total_marks)
+    mark = txt.format(result_marks=get_marks(), total_marks=total_marks)
     doc = Document()
-    doc.add_paragraph('Student name: ' + j["student"]["name"] + "\t" + 'Student ID: ' + j["student"]["id"] + "\t\tResult: " + mark)
+    doc.add_paragraph(
+        'Student name: ' + j["student"]["name"] + "\t" + 'Student ID: ' + j["student"]["id"] + "\t\tResult: " + mark)
     doc.add_paragraph('Topic of Presentation: ' + j["topic"])
-    table = doc.add_table(rows = 6, cols = 1)
+    table = doc.add_table(rows=6, cols=1)
     table.style = 'TableNormal'
 
     table.cell(0, 0).text = "Student name:"
@@ -476,7 +488,7 @@ def do_exportAsWord(filename):
     if result_comment.get() != "":
         table.cell(4, 0).paragraphs[0].runs[0].add_comment(result_comment.get(), "Student Evaluation App")
 
-    table = doc.add_table(rows = 13, cols = 5)
+    table = doc.add_table(rows=13, cols=5)
     table.style = 'TableGrid'
 
     row_idx = 0
@@ -495,7 +507,7 @@ def do_exportAsWord(filename):
             for option_index in range(len(options)):
                 option = options[option_index]
                 txt = "{score:d} - {label:s}"
-                table.cell(row_idx, option_index + 1).text = txt.format(score = option["value"], label = option["label"])
+                table.cell(row_idx, option_index + 1).text = txt.format(score=option["value"], label=option["label"])
                 table.cell(row_idx, option_index + 1).paragraphs[0].runs[0].font.bold = True
 
         for category_row_idx in range(len(evaluation_parameters[category_idx])):
@@ -504,7 +516,8 @@ def do_exportAsWord(filename):
             option = evaluation_parameters[category_idx][category_row_idx]
             table.cell(row_idx, 0).text = option["label"]
             if evaluate_comments[jIndex].get() != "":
-                table.cell(row_idx, 0).paragraphs[0].runs[0].add_comment(evaluate_comments[jIndex].get(), "Student Evaluation App")
+                table.cell(row_idx, 0).paragraphs[0].runs[0].add_comment(evaluate_comments[jIndex].get(),
+                                                                         "Student Evaluation App")
 
             selected = j["selects"][jIndex]
 
@@ -516,18 +529,22 @@ def do_exportAsWord(filename):
 
             jIndex = jIndex + 1
 
-
     doc.save(filename)
     messagebox.showinfo("title", "save as " + filename)
+
 
 def menu_exit():
     win.quit()
     win.destroy()
     exit()
 
-def menu_about():
-    messagebox.showinfo("About", "This application is for student evaluation created by SUX2 group in SOFT808 in S3 2020.")
 
+def menu_about():
+    messagebox.showinfo("About",
+                        "This application is for student evaluation created by SUX2 group in SOFT808 in S3 2020.")
+
+
+"""
 class CommentDialog(simpledialog.Dialog):
     def __init__(self, master,
                  text='', buttons=[], default=None, cancel=None,
@@ -536,10 +553,12 @@ class CommentDialog(simpledialog.Dialog):
 
     def body(self, master):
         self.comment = tk.StringVar()
-        self.comment_entered = ttk.Entry(self.comment, width = 12, textvariable = self.comment)
+        self.comment_entered = ttk.Entry(self.comment, width=12, textvariable=self.comment)
         self.comment_entered.pack(side=tk.LEFT, padx=5, pady=5)
 
-    #def buttonbox(self):
+    # def buttonbox(self):
+"""
+
 
 class CommentDialog(_QueryString):
     def __init__(self, *args, **kw):
@@ -547,17 +566,20 @@ class CommentDialog(_QueryString):
 
     def body(self, master):
         entry = _QueryString.body(self, master)
-        entry.configure(width = 50)
+        entry.configure(width=50)
         return entry
 
     def getresult(self):
         return self.entry.get()
 
+
 def show_comment_dialog(label, comment):
     def x():
         prompt = "Enter Comment for {label:s}"
-        comment.set(CommentDialog("Enter Comment.", prompt.format(label = label), initialvalue = comment.get()).result)
+        comment.set(CommentDialog("Enter Comment.", prompt.format(label=label), initialvalue=comment.get()).result)
+
     return x
+
 
 def reset_parameters():
     student_first_name.set("")
@@ -569,6 +591,7 @@ def reset_parameters():
 
     result_label["text"] = get_result_string(get_marks())
 
+
 # Create instance
 win = tk.Tk()
 win.resizable(0, 0)
@@ -577,91 +600,93 @@ win.resizable(0, 0)
 win.title("Student Evaluation")
 
 default_font = tk.font.nametofont("TkDefaultFont")
-small_font = tk.font.Font(size = default_font.cget("size") - 1)
+small_font = tk.font.Font(size=default_font.cget("size") - 1)
 
 #
 #  Frames
 #
 
-student_frame = ttk.LabelFrame(win, text = "Student")
-student_frame.grid(column = 0, row = 0, padx = 8, pady = 4, sticky = tk.W)
-#student_frame.pack(expand = True, fill = tk.X)
+student_frame = ttk.LabelFrame(win, text="Student")
+student_frame.grid(column=0, row=0, padx=8, pady=4, sticky=tk.W)
+# student_frame.pack(expand = True, fill = tk.X)
 
-result_frame = ttk.LabelFrame(win, text = "Result")
-result_frame.grid(column = 1, row = 0, padx = 8, pady = 4, sticky = tk.E + tk.W + tk.N + tk.S)
-#result_frame.pack(side = tk.RIGHT, expand = True, fill = tk.X)
+result_frame = ttk.LabelFrame(win, text="Result")
+result_frame.grid(column=1, row=0, padx=8, pady=4, sticky=tk.E + tk.W + tk.N + tk.S)
+# result_frame.pack(side = tk.RIGHT, expand = True, fill = tk.X)
 
-evaluation_frame = ttk.LabelFrame(win, text = "Evaluation")
-evaluation_frame.grid(column = 0, row = 1, columnspan = 2, padx = 8, pady = 4)
-#evaluation_frame.pack(side = tk.BOTTOM, expand = True, fill = tk.X)
+evaluation_frame = ttk.LabelFrame(win, text="Evaluation")
+evaluation_frame.grid(column=0, row=1, columnspan=2, padx=8, pady=4)
+# evaluation_frame.pack(side = tk.BOTTOM, expand = True, fill = tk.X)
 
 #
 #  Student name
 #
-label = ttk.Label(student_frame, text = "Student name", )
-label.grid(column = 0, row = 1, sticky = tk.W, ipady = 4)
+label = ttk.Label(student_frame, text="Student name")
+label.grid(column=0, row=1, sticky=tk.W, ipady=4)
 
-label = ttk.Label(student_frame, text = "First name", font = small_font)
-label.grid(column = 1, row = 0, sticky = tk.W)
-label = ttk.Label(student_frame, text = "Last name", font = small_font)
-label.grid(column = 2, row = 0, sticky = tk.W)
+label = ttk.Label(student_frame, text="First name", font=small_font)
+label.grid(column=1, row=0, sticky=tk.W)
+label = ttk.Label(student_frame, text="Last name", font=small_font)
+label.grid(column=2, row=0, sticky=tk.W)
 
 student_first_name = tk.StringVar()
 student_last_name = tk.StringVar()
-student_name_first_entered = ttk.Entry(student_frame, width = 15, textvariable = student_first_name)
-student_name_first_entered.grid(column = 1, row = 1, sticky = tk.W)
-student_name_last_entered = ttk.Entry(student_frame, width = 15, textvariable = student_last_name)
-student_name_last_entered.grid(column = 2, row = 1, sticky = tk.W)
+student_name_first_entered = ttk.Entry(student_frame, width=15, textvariable=student_first_name)
+student_name_first_entered.grid(column=1, row=1, sticky=tk.W)
+student_name_last_entered = ttk.Entry(student_frame, width=15, textvariable=student_last_name)
+student_name_last_entered.grid(column=2, row=1, sticky=tk.W)
 
 #
 #  Student ID
 #
-label = ttk.Label(student_frame, text = "Student ID")
-label.grid(column = 5, row = 1, sticky = tk.W, ipadx = 10, ipady = 4)
+label = ttk.Label(student_frame, text="Student ID")
+label.grid(column=5, row=1, sticky=tk.W, ipadx=10, ipady=4)
 
 student_id = tk.StringVar()
-student_id_entered = ttk.Entry(student_frame, width = 12, textvariable = student_id)
-student_id_entered.grid(column = 6, row = 1, sticky = tk.W)
+student_id_entered = ttk.Entry(student_frame, width=12, textvariable=student_id)
+student_id_entered.grid(column=6, row=1, sticky=tk.W)
 
 #
 #  Topic of presentation
 #
-label = ttk.Label(student_frame, text = "Topic of presentation")
-label.grid(column = 0, row = 2, sticky = tk.W, ipady = 4)
+label = ttk.Label(student_frame, text="Topic of presentation")
+label.grid(column=0, row=2, sticky=tk.W, ipady=4)
 
 topic = tk.StringVar()
-topic_entered = ttk.Entry(student_frame, width = 30, textvariable = topic)
-topic_entered.grid(column = 1, row = 2, columnspan = 2, sticky = tk.W)
+topic_entered = ttk.Entry(student_frame, width=30, textvariable=topic)
+topic_entered.grid(column=1, row=2, columnspan=2, sticky=tk.W)
 
 student_comment = tk.StringVar()
-student_frame_comment_button = ttk.Button(student_frame, text = "+Comment", command = show_comment_dialog("Student", student_comment))
-student_frame_comment_button.grid(column = 0, row = 3, sticky = tk.W)
+student_frame_comment_button = ttk.Button(student_frame, text="+Comment",
+                                          command=show_comment_dialog("Student", student_comment))
+student_frame_comment_button.grid(column=0, row=3, sticky=tk.W)
 
 #
 #  Result
 #
-result_label = ttk.Label(result_frame, text = get_result_string(0), width = 30)
-result_label.grid(column = 0, row = 0, sticky = tk.E)
+result_label = ttk.Label(result_frame, text=get_result_string(0), width=30)
+result_label.grid(column=0, row=0, sticky=tk.E)
 
-export_button = ttk.Button(result_frame, text = "Export as Word file", command = menu_export_as_word, width = 20)
-export_button.grid(column = 1, row = 0, sticky = tk.E + tk.N + tk.S)
+export_button = ttk.Button(result_frame, text="Export as Word file", command=menu_export_as_word, width=20)
+export_button.grid(column=1, row=0, sticky=tk.E + tk.N + tk.S)
 
 result_comment = tk.StringVar()
-result_frame_comment_button = ttk.Button(result_frame, text = "+Comment", command = show_comment_dialog("Result", result_comment))
-result_frame_comment_button.grid(column = 0, row = 3, sticky = tk.W + tk.S)
+result_frame_comment_button = ttk.Button(result_frame, text="+Comment",
+                                         command=show_comment_dialog("Result", result_comment))
+result_frame_comment_button.grid(column=0, row=3, sticky=tk.W + tk.S)
 
-result_reset_button = ttk.Button(result_frame, text = "Reset", command = reset_parameters, width = 20)
-result_reset_button.grid(column = 1, row = 1, sticky = tk.E + tk.N + tk.S, pady = 10)
+result_reset_button = ttk.Button(result_frame, text="Reset", command=reset_parameters, width=20)
+result_reset_button.grid(column=1, row=1, sticky=tk.E + tk.N + tk.S, pady=10)
 
 y = 0
 
 tab_control = ttk.Notebook(evaluation_frame)
-tab_control.grid(column = 0, row = 0)
+tab_control.grid(column=0, row=0)
 tab_frames = []
 for i in range(len(categories)):
     category_frame = ttk.LabelFrame(tab_control)
-    tab_control.add(category_frame, text = categories[i])
-    #category_frame.grid(column = 0, row = y * 2, sticky = tk.W)
+    tab_control.add(category_frame, text=categories[i])
+    # category_frame.grid(column = 0, row = y * 2, sticky = tk.W)
     tab_frames.append(category_frame)
 
     for j in range(len(evaluation_parameters[i])):
@@ -675,16 +700,17 @@ for i in range(len(categories)):
         max_mark = 0
         for k in range(evaluate_count):
             colour = colours[evaluation_parameter["evaluations"][k]["value"]]
-            label = str(evaluation_parameter["evaluations"][k]["value"]) + " - " + evaluation_parameter["evaluations"][k]["label"]
-            r = tk.Radiobutton(category_frame, text = label, variable = evaluate_values[y], width = 20, bg = colour,
-                                    value = k, command = click_evaluation(y, k))
-            r.grid(column = k + 2, row = y * 2, sticky = tk.W)
-            #r.configure(state = tk.DISABLED)
+            label = str(evaluation_parameter["evaluations"][k]["value"]) + " - " + \
+                    evaluation_parameter["evaluations"][k]["label"]
+            r = tk.Radiobutton(category_frame, text=label, variable=evaluate_values[y], width=20, bg=colour,
+                               value=k, command=click_evaluation(y, k))
+            r.grid(column=k + 2, row=y * 2, sticky=tk.W)
+            # r.configure(state = tk.DISABLED)
 
             description = evaluation_parameter["evaluations"][k]["description"]
-            d = tk.Message(category_frame, text = description, bg = colour, font = small_font)
-            d.grid(column = k + 2, row = y * 2 + 1, sticky = tk.W + tk.E + tk.N + tk.S)
-            #d.grid_remove()
+            d = tk.Message(category_frame, text=description, bg=colour, font=small_font)
+            d.grid(column=k + 2, row=y * 2 + 1, sticky=tk.W + tk.E + tk.N + tk.S)
+            # d.grid_remove()
 
             evaluate_radios[y].append(r)
             evaluate_descriptions[y].append(d)
@@ -695,42 +721,43 @@ for i in range(len(categories)):
         total_marks = total_marks + max_mark
 
         label = "Not yet"
-        r = tk.Radiobutton(category_frame, text = label, variable = evaluate_values[y],
-                                    value = evaluate_count, bg = colours[0], command = click_evaluation(y, evaluate_count))
-        r.grid(column = evaluate_count + 2, row = y * 2, sticky = tk.W)
+        r = tk.Radiobutton(category_frame, text=label, variable=evaluate_values[y],
+                           value=evaluate_count, bg=colours[0], command=click_evaluation(y, evaluate_count))
+        r.grid(column=evaluate_count + 2, row=y * 2, sticky=tk.W)
 
-        d = tk.Message(category_frame, text = "", bg = colours[0], font = small_font)
-        d.grid(column = evaluate_count + 2, row = y * 2 + 1, sticky = tk.W + tk.E + tk.N + tk.S)
-        #d.grid_remove()
+        d = tk.Message(category_frame, text="", bg=colours[0], font=small_font)
+        d.grid(column=evaluate_count + 2, row=y * 2 + 1, sticky=tk.W + tk.E + tk.N + tk.S)
+        # d.grid_remove()
 
         evaluate_radios[y].append(r)
         evaluate_descriptions[y].append(d)
 
-        category_label = ttk.Label(category_frame, text = evaluation_parameter["label"], width = 20)
-        category_label.grid(column = 1, row = y * 2, sticky = tk.W)
+        category_label = ttk.Label(category_frame, text=evaluation_parameter["label"], width=20)
+        category_label.grid(column=1, row=y * 2, sticky=tk.W)
 
         evaluate_comment = tk.StringVar()
-        evaluate_comment_button = ttk.Button(category_frame, text = "+Comment", command = show_comment_dialog(evaluation_parameter["label"], evaluate_comment))
-        evaluate_comment_button.grid(column = 1, row = y * 2 + 1, sticky = tk.W + tk.N)
+        evaluate_comment_button = ttk.Button(category_frame, text="+Comment",
+                                             command=show_comment_dialog(evaluation_parameter["label"],
+                                                                         evaluate_comment))
+        evaluate_comment_button.grid(column=1, row=y * 2 + 1, sticky=tk.W + tk.N)
         evaluate_comments.append(evaluate_comment)
 
         y = y + 1
 
-
 result_label["text"] = get_result_string(0)
 
 menu_bar = Menu(win)
-win.config(menu = menu_bar)
+win.config(menu=menu_bar)
 
-file_menu = Menu(menu_bar, tearoff = 0)
-#file_menu.add_command(label = "Save", command = menu_save)
-file_menu.add_command(label = "Export as Word", command = menu_export_as_word)
+file_menu = Menu(menu_bar, tearoff=0)
+# file_menu.add_command(label = "Save", command = menu_save)
+file_menu.add_command(label="Export as Word", command=menu_export_as_word)
 file_menu.add_separator()
-file_menu.add_command(label = "Exit", command = menu_exit)
-menu_bar.add_cascade(label = "File", menu = file_menu)
+file_menu.add_command(label="Exit", command=menu_exit)
+menu_bar.add_cascade(label="File", menu=file_menu)
 
-help_menu = Menu(menu_bar, tearoff = 0)
-help_menu.add_command(label = "About", command = menu_about)
-menu_bar.add_cascade(label = "Help", menu = help_menu)
+help_menu = Menu(menu_bar, tearoff=0)
+help_menu.add_command(label="About", command=menu_about)
+menu_bar.add_cascade(label="Help", menu=help_menu)
 
 win.mainloop()
