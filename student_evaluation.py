@@ -12,6 +12,7 @@ from docx.shared import Inches, RGBColor, Pt
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.dml.color import ColorFormat
+import pprint
 
 categories = ["Content structure / ideas", "Language and Delivery", "Technical"]
 colours = {
@@ -22,7 +23,7 @@ colours = {
     0: "#BFBFBF",
 }
 
-evaluation_parameters = [
+evaluation_config = [
     [
         {
             "label": "Focus",
@@ -331,81 +332,183 @@ evaluation_parameters = [
     ],
 ]
 
-evaluate_radios = []
-evaluate_descriptions = []
-evaluate_values = []
-evaluate_comments = []
+evaluation_radios = []
+evaluation_descriptions = []
+evaluation_choices = []
+evaluation_comments = []
 total_marks = 0
+all_students = []
+student_menus = []
+current_student_index: int = 0
+
+default_student = {
+    "student_first_name": "New",
+    "student_last_name": "Student",
+    "student_id": "00000000",
+    "student_symbol": "",
+    "student_marks": 0,
+    "student_comment": "",
+    "evaluations": [],
+    "result_comment": ""
+}
+
+
+def save_student_button_push():
+    global current_student_index
+    all_students[current_student_index] = get_student()
+    update_student_menus()
+    update_select_student_menu()
+
+
+def menu_select_student(menu_index: int):
+    def x():
+        all_students[current_student_index] = get_student()
+        select_student(menu_index)
+        current_student.set(student_menus[menu_index])
+
+    return x
+
+
+def select_student(menu_index: int):
+    global current_student_index
+    current_student_index = menu_index
+    set_student(all_students[current_student_index])
+
+
+def add_new_student():
+    all_students.append(default_student)
+    select_student(len(all_students) - 1)
+
+
+def get_student():
+    student = {
+        "student_first_name": student_first_name.get(),
+        "student_last_name": student_last_name.get(),
+        "student_id": student_id.get(),
+        "student_symbol": student_symbol.get(),
+        "student_marks": get_marks(),
+        "student_comment": student_comment.get(),
+        "evaluations": [],
+        "result_comment": result_comment.get(),
+    }
+    txt = "{student_first_name:s} {student_last_name:s}"
+    student["student_name"] = txt.format(student_first_name=student["student_first_name"],
+                                         student_last_name=student["student_last_name"])
+    #  comment
+    for i in range(len(evaluation_comments)):
+        student["evaluations"].append({
+            "choice": evaluation_choices[i].get(),
+            "comment": evaluation_comments[i].get()
+        })
+
+    return student
+
+
+def set_student(student):
+    student_first_name.set(student["student_first_name"])
+    student_last_name.set(student["student_last_name"])
+    student_id.set(student["student_id"])
+    student_symbol.set(student["student_symbol"])
+    #  comment
+    student_comment.set(student["student_comment"])
+    for i in range(len(evaluation_comments)):
+        evaluation_choices[i].set(student["evaluations"][i]["choice"])
+        evaluation_comments[i].set(student["evaluations"][i]["comment"])
+    result_comment.set(student["result_comment"])
+
+
+def update_student_menus():
+    student_menus.clear()
+    for i in range(len(all_students)):
+        student = all_students[i]
+        txt = "{i:d} : {first_name:s} {last_name:s} ({student_id:s})"
+        label = txt.format(i=i,
+                           first_name=student["student_first_name"],
+                           last_name=student["student_last_name"],
+                           student_id=student["student_id"])
+        student_menus.append(label)
+
+
+def add_student_button_push():
+    global current_student_index
+    all_students[current_student_index] = get_student()
+    add_new_student()
+    update_student_menus()
+    update_select_student_menu()
+
+
+def update_select_student_menu():
+    global current_student_index
+    menu = select_student_menu["menu"]
+    menu.delete(0, "end")
+    for i in range(len(student_menus)):
+        menu.add_command(label=student_menus[i], command=menu_select_student(i))
+    current_student.set(student_menus[current_student_index])
 
 
 def get_result_string(result_marks):
-    format = "Result: {result_marks:d} / {total_marks}"
-    mark_string = format.format(result_marks=result_marks, total_marks=total_marks)
+    f = "Result: {result_marks:d} / {total_marks}"
+    mark_string = f.format(result_marks=result_marks, total_marks=total_marks)
     return mark_string
 
 
 def get_marks():
-    sum = 0
+    mark_sum = 0
     y = 0
     for i in range(len(categories)):
-        for j in range(len(evaluation_parameters[i])):
-            evaluation_parameter = evaluation_parameters[i][j]
-            evaluate_count = len(evaluation_parameter["evaluations"])
+        for j in range(len(evaluation_config[i])):
+            evaluation_parameter = evaluation_config[i][j]
+            evaluation_count = len(evaluation_parameter["evaluations"])
 
-            selected = evaluate_values[y].get()
-            if (selected < evaluate_count):
-                sum = sum + evaluation_parameter["evaluations"][selected]["value"]
+            selected = evaluation_choices[y].get()
+            if selected < evaluation_count:
+                mark_sum = mark_sum + evaluation_parameter["evaluations"][selected]["value"]
 
             y = y + 1
 
-    return sum
+    return mark_sum
 
 
-def click_evaluation(y, k):
+def click_evaluation(y, x):
     def x():
         result_label["text"] = get_result_string(get_marks())
 
     return x
 
 
-def click_evaluation_selection(clicked_i, clicked_j, clicked_y, evaluate_count):
+"""
+def click_evaluation_selection(clicked_i, clicked_j, clicked_y):
     def x():
         y = 0
         for i in range(len(categories)):
-            for j in range(len(evaluation_parameters[i])):
-                evaluation_parameter = evaluation_parameters[i][j]
-                evaluate_count = len(evaluation_parameter["evaluations"])
+            for j in range(len(evaluation_config[i])):
+                evaluation_parameter = evaluation_config[i][j]
+                evaluation_count = len(evaluation_parameter["evaluations"])
                 for k in range(len(evaluation_parameter["evaluations"]) + 1):
                     if y == clicked_y:
-                        evaluate_descriptions[y][k].grid()
+                        evaluation_descriptions[y][k].grid()
                 y = y + 1
 
     return x
+"""
 
 
-def create_result_json_dict():
-    selected = []
-    for i in range(len(evaluate_values)):
-        selected.append(evaluate_values[i].get())
-
+def create_save_data_dict():
     data = {
-        "student": {
-            "name": student_name_first_entered.get() + " " + student_name_last_entered.get(),
-            "id": student_id_entered.get(),
-        },
         "topic": topic_entered.get(),
         "total_marks": total_marks,
-        "selects": selected,
+        "students": all_students,
     }
 
     return data
 
 
 def create_result_json():
-    data = create_result_json_dict()
+    data = create_save_data_dict()
     return json.dumps(data)
 
 
+"""
 def validate_fill_in():
     message = ""
     result = True
@@ -424,18 +527,69 @@ def validate_fill_in():
 
     y = 0
     for i in range(len(categories)):
-        for j in range(len(evaluation_parameters[i])):
-            evaluation_parameter = evaluation_parameters[i][j]
-            evaluate_count = len(evaluation_parameter["evaluations"])
+        for j in range(len(evaluation_config[i])):
+            evaluation_parameter = evaluation_config[i][j]
+            evaluation_count = len(evaluation_parameter["evaluations"])
 
-            if evaluate_count < evaluate_values[y].get():
+            if evaluation_count < evaluation_choices[y].get():
                 txt = "* {label:s} is not assessed.\n"
                 message += txt.format(label=evaluation_parameter["label"])
 
             y = y + 1
 
-    if (message != ""):
+    if message != "":
         messagebox.showinfo("Error", message)
+        result = False
+
+    return result
+"""
+
+
+def validate_fill_in():
+    messages: str = ""
+    result = True
+
+    if topic_entered.get() == "":
+        messages += "* Missing Topic of presentation\n"
+
+    for i in range(len(student_menus)):
+        student_label: str = student_menus[i]
+        message: str = ""
+
+        student = all_students[i]
+
+        if student["student_first_name"] == "":
+            message += "* Missing Student name (first name)\n"
+
+        if student["student_last_name"] == "":
+            message += "* Missing Student name (last name)\n"
+
+        if student["student_id"] == "":
+            message += "* Missing Student ID\n"
+
+        if student["student_symbol"] == "":
+            message += "* Missing Student Symbol\n"
+
+        y = 0
+        for i in range(len(categories)):
+            for j in range(len(evaluation_config[i])):
+                evaluation_parameter = evaluation_config[i][j]
+                evaluation_count = len(evaluation_parameter["evaluations"])
+
+                if evaluation_count < student["evaluations"][y]["choice"]:
+                    txt = "* {label:s} is not assessed.\n"
+                    message += txt.format(label=evaluation_parameter["label"])
+
+                y = y + 1
+
+        if message != "":
+            if messages != "":
+                messages += "\n"
+            messages += "Student: " + student_label + "\n"
+            messages += message
+
+    if messages != "":
+        messagebox.showinfo("Error", messages)
         result = False
 
     return result
@@ -443,91 +597,121 @@ def validate_fill_in():
 
 def menu_save():
     if validate_fill_in():
-        json = create_result_json()
+        json_string = create_result_json()
 
         txt = "{student_id:s}.json"
         file_name = txt.format(txt, student_id=student_id_entered.get())
 
         with open(file_name, mode='w') as f:
-            f.write(json)
+            f.write(json_string)
 
 
 def menu_export_as_word():
+    all_students[current_student_index] = get_student()
     if validate_fill_in():
         txt = "{student_id:s}.docx"
         filename = txt.format(student_id=student_id_entered.get())
         path = tk.filedialog.asksaveasfile(mode="w", initialfile=filename, defaultextension="docx")
         filename = path.name
         path.close()
-        do_exportAsWord(filename)
+        do_export_as_word(filename)
 
 
-def do_exportAsWord(filename):
-    j = create_result_json_dict()
+def do_export_as_word(filename):
+    save_data = create_save_data_dict()
+    pprint.pprint(save_data)
 
-    studentId = j["student"]["id"]
-
-    txt = "{result_marks:d} / {total_marks:d}"
-    mark = txt.format(result_marks=get_marks(), total_marks=total_marks)
     doc = Document()
-    doc.add_paragraph(
-        'Student name: ' + j["student"]["name"] + "\t" + 'Student ID: ' + j["student"]["id"] + "\t\tResult: " + mark)
-    doc.add_paragraph('Topic of Presentation: ' + j["topic"])
-    table = doc.add_table(rows=6, cols=1)
+    txt = "Topic of Presentation: {topic:s}"
+    doc.add_paragraph(txt.format(topic=save_data["topic"]))
+
+    student_count = len(save_data["students"])
+    table = doc.add_table(rows=student_count, cols=5)
     table.style = 'TableNormal'
 
-    table.cell(0, 0).text = "Student name:"
-    table.cell(1, 0).text = j["student"]["name"]
-    table.cell(2, 0).text = "Student ID:"
-    table.cell(3, 0).text = j["student"]["id"]
-    table.cell(4, 0).text = mark
+    #
+    # Student Information
+    #
+    mark_txt = "{result_marks:d} / {total_marks:d}"
+    student_symbols_by_evaluation_choice = []
+    row_index = 0
+    for category_idx in range(len(evaluation_config)):
+        for category_row_index in range(len(evaluation_config[category_idx])):
+            evaluations = evaluation_config[category_idx][category_row_index]["evaluations"]
+            student_symbols_by_evaluation_choice.append([])
+            for evaluation_index in range(len(evaluations)):
+                student_symbols_by_evaluation_choice[row_index].append([])
+            row_index += 1
 
-    if student_comment.get() != "":
-        table.cell(0, 0).paragraphs[0].runs[0].add_comment(student_comment.get(), "Student Evaluation App")
+    for i in (range(student_count)):
+        student = save_data["students"][i]
+        student_result = mark_txt.format(result_marks=student["student_marks"],
+                                         total_marks=total_marks)
+        txt = "{student_name:s} ({student_symbol:s})"
+        student_name = txt.format(student_name=student["student_name"],
+                                  student_symbol=student["student_symbol"])
+        table.cell(i, 0).text = "Student name:"
+        table.cell(i, 1).text = student_name
+        table.cell(i, 2).text = "Student ID:"
+        table.cell(i, 3).text = student["student_id"]
+        table.cell(i, 4).text = student_result
 
-    if result_comment.get() != "":
-        table.cell(4, 0).paragraphs[0].runs[0].add_comment(result_comment.get(), "Student Evaluation App")
+        if student["student_comment"] != "":
+            table.cell(i, 1).paragraphs[0].runs[0].add_comment(student["student_comment"], "Student Evaluation App")
+
+        if student["result_comment"] != "":
+            table.cell(i, 4).paragraphs[0].runs[0].add_comment(student["result_comment"], "Student Evaluation App")
+
+        for j in range(len(student["evaluations"])):
+            choice = student["evaluations"][j]["choice"]
+            txt = "{j:d} {choice:d}"
+            student_symbols_by_evaluation_choice[j][choice].append(student["student_symbol"])
+
+    pprint.pprint(student_symbols_by_evaluation_choice)
 
     table = doc.add_table(rows=13, cols=5)
     table.style = 'TableGrid'
 
-    row_idx = 0
-    jIndex = 0
+    cell_row_index = 0
+    evaluate_index = 0
 
-    for category_idx in range(len(categories)):
-        table.cell(row_idx, category_idx).text = categories[category_idx]
-        table.cell(row_idx, category_idx).paragraphs[0].runs[0].font.bold = True
+    for category_idx in range(len(evaluation_config)):
+        table.cell(cell_row_index, category_idx).text = categories[category_idx]
+        table.cell(cell_row_index, category_idx).paragraphs[0].runs[0].font.bold = True
 
         #
         # label
         #
-        for category_row_idx in range(len(evaluation_parameters[category_idx])):
-            options = evaluation_parameters[category_idx][category_row_idx]["evaluations"]
+        for category_row_index in range(len(evaluation_config[category_idx])):
+            options = evaluation_config[category_idx][category_row_index]["evaluations"]
 
             for option_index in range(len(options)):
                 option = options[option_index]
                 txt = "{score:d} - {label:s}"
-                table.cell(row_idx, option_index + 1).text = txt.format(score=option["value"], label=option["label"])
-                table.cell(row_idx, option_index + 1).paragraphs[0].runs[0].font.bold = True
+                table.cell(cell_row_index, option_index + 1).text = txt.format(score=option["value"], label=option["label"])
+                table.cell(cell_row_index, option_index + 1).paragraphs[0].runs[0].font.bold = True
 
-        for category_row_idx in range(len(evaluation_parameters[category_idx])):
-            options = evaluation_parameters[category_idx][category_row_idx]["evaluations"]
-            row_idx = row_idx + 1
-            option = evaluation_parameters[category_idx][category_row_idx]
-            table.cell(row_idx, 0).text = option["label"]
-            if evaluate_comments[jIndex].get() != "":
-                table.cell(row_idx, 0).paragraphs[0].runs[0].add_comment(evaluate_comments[jIndex].get(),
+        for category_row_index in range(len(evaluation_config[category_idx])):
+            choices = evaluation_config[category_idx][category_row_index]["evaluations"]
+            cell_row_index += 1
+            option = evaluation_config[category_idx][category_row_index]
+            table.cell(cell_row_index, 0).text = option["label"]
+            if evaluation_comments[evaluate_index].get() != "":
+                table.cell(cell_row_index, 0).paragraphs[0].runs[0].add_comment(evaluation_comments[evaluate_index].get(),
                                                                          "Student Evaluation App")
 
-            selected = j["selects"][jIndex]
+            for choice_index in range(len(choices)):
+                choice = choices[choice_index]
+                table.cell(cell_row_index, choice_index + 1).text = choice["description"]
 
-            for option_index in range(len(options)):
-                option = options[option_index]
-                table.cell(row_idx, option_index + 1).text = option["description"]
-                if (selected == option_index):
-                    table.cell(row_idx, option_index + 1).paragraphs[0].runs[0].font.bold = True
+                student_symbols = ""
+                txt = "({symbol:s})"
+                for student_symbol in student_symbols_by_evaluation_choice[evaluate_index][choice_index]:
+                    student_symbols += txt.format(symbol=student_symbol)
+                if student_symbols != "":
+                    table.cell(cell_row_index, choice_index + 1).text += "\n" + student_symbols
 
-            jIndex = jIndex + 1
+            evaluate_index += 1
 
     doc.save(filename)
     messagebox.showinfo("title", "save as " + filename)
@@ -586,10 +770,92 @@ def reset_parameters():
     student_last_name.set("")
     student_id.set("")
     topic.set("")
-    for i in range(len(evaluate_values)):
-        evaluate_values[i].set(4)
+    for i in range(len(evaluation_choices)):
+        evaluation_choices[i].set(4)
 
     result_label["text"] = get_result_string(get_marks())
+
+
+def initialize_values():
+    for i in range(len(categories)):
+        evaluation_count = len(evaluation_config[i])
+        for j in range((evaluation_count)):
+            default_student["evaluations"].append({
+                "choice": evaluation_count,
+                "comment": ""
+            })
+            evaluation_choices.append(tk.IntVar())
+            evaluation_comments.append(tk.StringVar())
+
+
+def build_evaluation_form():
+    global total_marks
+
+    y = 0
+    tab_control = ttk.Notebook(evaluation_frame)
+    tab_control.grid(column=0, row=0)
+    tab_frames = []
+    for i in range(len(categories)):
+        category_frame = ttk.LabelFrame(tab_control)
+        tab_control.add(category_frame, text=categories[i])
+        # category_frame.grid(column = 0, row = y * 2, sticky = tk.W)
+        tab_frames.append(category_frame)
+
+        for j in range(len(evaluation_config[i])):
+            evaluation_radios.append([])
+            evaluation_descriptions.append([])
+            evaluation_parameter = evaluation_config[i][j]
+            evaluation_count = len(evaluation_parameter["evaluations"])
+
+            max_mark = 0
+            for k in range(evaluation_count):
+                colour = colours[evaluation_parameter["evaluations"][k]["value"]]
+                txt = "{value:d} - {label:s}"
+                r = tk.Radiobutton(category_frame,
+                                   text=txt.format(value=evaluation_parameter["evaluations"][k]["value"],
+                                                 label=evaluation_parameter["evaluations"][k]["label"]),
+                                   variable=evaluation_choices[y], width=20, bg=colour,
+                                   value=k, command=click_evaluation(y, k))
+                r.grid(column=k + 2, row=y * 2, sticky=tk.W)
+
+                description = evaluation_parameter["evaluations"][k]["description"]
+                d = tk.Message(category_frame, text=description, bg=colour, font=small_font)
+                d.grid(column=k + 2, row=y * 2 + 1, sticky=tk.W + tk.E + tk.N + tk.S)
+
+                evaluation_radios[y].append(r)
+                evaluation_descriptions[y].append(d)
+
+                if max_mark < evaluation_parameter["evaluations"][k]["value"]:
+                    max_mark = evaluation_parameter["evaluations"][k]["value"]
+
+            total_marks = total_marks + max_mark
+
+            label = "Not yet"
+            r = tk.Radiobutton(category_frame, text=label, variable=evaluation_choices[y],
+                               value=evaluation_count, bg=colours[0], command=click_evaluation(y, evaluation_count))
+            r.grid(column=evaluation_count + 2, row=y * 2, sticky=tk.W)
+
+            d = tk.Message(category_frame, text="", bg=colours[0], font=small_font)
+            d.grid(column=evaluation_count + 2, row=y * 2 + 1, sticky=tk.W + tk.E + tk.N + tk.S)
+            # d.grid_remove()
+
+            evaluation_radios[y].append(r)
+            evaluation_descriptions[y].append(d)
+
+            category_label = ttk.Label(category_frame, text=evaluation_parameter["label"], width=20)
+            category_label.grid(column=1, row=y * 2, sticky=tk.W)
+
+            evaluation_comment = evaluation_comments[y]
+            evaluation_comment_button = ttk.Button(category_frame,
+                                                   text="+Comment",
+                                                   command=show_comment_dialog(evaluation_parameter["label"],
+                                                                               evaluation_comment))
+            evaluation_comment_button.grid(column=1, row=y * 2 + 1, sticky=tk.W + tk.N)
+            evaluation_comments[y] = evaluation_comment
+
+            y = y + 1
+
+    result_label["text"] = get_result_string(0)
 
 
 # Create instance
@@ -606,17 +872,45 @@ small_font = tk.font.Font(size=default_font.cget("size") - 1)
 #  Frames
 #
 
+select_student_frame = ttk.LabelFrame(win, text="Select Student")
+select_student_frame.grid(column=0, row=0, columnspan=2, padx=8, pady=4, sticky=tk.W)
+
 student_frame = ttk.LabelFrame(win, text="Student")
-student_frame.grid(column=0, row=0, padx=8, pady=4, sticky=tk.W)
-# student_frame.pack(expand = True, fill = tk.X)
+student_frame.grid(column=0, row=1, padx=8, pady=4, sticky=tk.W)
 
 result_frame = ttk.LabelFrame(win, text="Result")
-result_frame.grid(column=1, row=0, padx=8, pady=4, sticky=tk.E + tk.W + tk.N + tk.S)
-# result_frame.pack(side = tk.RIGHT, expand = True, fill = tk.X)
+result_frame.grid(column=1, row=1, padx=8, pady=4, sticky=tk.E + tk.W + tk.N + tk.S)
 
 evaluation_frame = ttk.LabelFrame(win, text="Evaluation")
-evaluation_frame.grid(column=0, row=1, columnspan=2, padx=8, pady=4)
-# evaluation_frame.pack(side = tk.BOTTOM, expand = True, fill = tk.X)
+evaluation_frame.grid(column=0, row=2, columnspan=2, padx=8, pady=4)
+
+#
+#  Student Menu
+#
+current_student = tk.StringVar()
+current_student.set("")
+select_student_menu = tk.OptionMenu(select_student_frame, current_student, "")
+select_student_menu.grid(column=0, row=0, sticky=tk.W)
+
+save_student_button = ttk.Button(select_student_frame, text="Save Student", command=save_student_button_push)
+save_student_button.grid(column=1, row=0, sticky=tk.W)
+add_student_button = ttk.Button(select_student_frame, text="Add New Student", command=add_student_button_push)
+add_student_button.grid(column=1, row=1, sticky=tk.W)
+
+#
+#  Topic of presentation
+#
+label = ttk.Label(select_student_frame, text="Topic of presentation")
+label.grid(column=2, row=0, sticky=tk.W, ipady=4)
+
+topic = tk.StringVar()
+topic_entered = ttk.Entry(select_student_frame, width=50, textvariable=topic)
+topic_entered.grid(column=3, row=0, columnspan=2, sticky=tk.W)
+
+student_comment = tk.StringVar()
+student_frame_comment_button = ttk.Button(student_frame, text="+Comment",
+                                          command=show_comment_dialog("Student", student_comment))
+student_frame_comment_button.grid(column=0, row=3, sticky=tk.W)
 
 #
 #  Student name
@@ -647,19 +941,14 @@ student_id_entered = ttk.Entry(student_frame, width=12, textvariable=student_id)
 student_id_entered.grid(column=6, row=1, sticky=tk.W)
 
 #
-#  Topic of presentation
+#  Student Symbol
 #
-label = ttk.Label(student_frame, text="Topic of presentation")
-label.grid(column=0, row=2, sticky=tk.W, ipady=4)
+label = ttk.Label(student_frame, text="Student Symbol")
+label.grid(column=0, row=2, sticky=tk.W, ipadx=10, ipady=4)
 
-topic = tk.StringVar()
-topic_entered = ttk.Entry(student_frame, width=30, textvariable=topic)
-topic_entered.grid(column=1, row=2, columnspan=2, sticky=tk.W)
-
-student_comment = tk.StringVar()
-student_frame_comment_button = ttk.Button(student_frame, text="+Comment",
-                                          command=show_comment_dialog("Student", student_comment))
-student_frame_comment_button.grid(column=0, row=3, sticky=tk.W)
+student_symbol = tk.StringVar()
+student_symbol_entered = ttk.Entry(student_frame, width=3, textvariable=student_symbol)
+student_symbol_entered.grid(column=1, row=2, sticky=tk.W)
 
 #
 #  Result
@@ -678,73 +967,8 @@ result_frame_comment_button.grid(column=0, row=3, sticky=tk.W + tk.S)
 result_reset_button = ttk.Button(result_frame, text="Reset", command=reset_parameters, width=20)
 result_reset_button.grid(column=1, row=1, sticky=tk.E + tk.N + tk.S, pady=10)
 
-y = 0
-
-tab_control = ttk.Notebook(evaluation_frame)
-tab_control.grid(column=0, row=0)
-tab_frames = []
-for i in range(len(categories)):
-    category_frame = ttk.LabelFrame(tab_control)
-    tab_control.add(category_frame, text=categories[i])
-    # category_frame.grid(column = 0, row = y * 2, sticky = tk.W)
-    tab_frames.append(category_frame)
-
-    for j in range(len(evaluation_parameters[i])):
-        evaluate_values.append(tk.IntVar())
-        evaluate_radios.append([])
-        evaluate_descriptions.append([])
-        evaluation_parameter = evaluation_parameters[i][j]
-        evaluate_count = len(evaluation_parameter["evaluations"])
-        evaluate_values[y].set(evaluate_count + 1)
-
-        max_mark = 0
-        for k in range(evaluate_count):
-            colour = colours[evaluation_parameter["evaluations"][k]["value"]]
-            label = str(evaluation_parameter["evaluations"][k]["value"]) + " - " + \
-                    evaluation_parameter["evaluations"][k]["label"]
-            r = tk.Radiobutton(category_frame, text=label, variable=evaluate_values[y], width=20, bg=colour,
-                               value=k, command=click_evaluation(y, k))
-            r.grid(column=k + 2, row=y * 2, sticky=tk.W)
-            # r.configure(state = tk.DISABLED)
-
-            description = evaluation_parameter["evaluations"][k]["description"]
-            d = tk.Message(category_frame, text=description, bg=colour, font=small_font)
-            d.grid(column=k + 2, row=y * 2 + 1, sticky=tk.W + tk.E + tk.N + tk.S)
-            # d.grid_remove()
-
-            evaluate_radios[y].append(r)
-            evaluate_descriptions[y].append(d)
-
-            if max_mark < evaluation_parameter["evaluations"][k]["value"]:
-                max_mark = evaluation_parameter["evaluations"][k]["value"]
-
-        total_marks = total_marks + max_mark
-
-        label = "Not yet"
-        r = tk.Radiobutton(category_frame, text=label, variable=evaluate_values[y],
-                           value=evaluate_count, bg=colours[0], command=click_evaluation(y, evaluate_count))
-        r.grid(column=evaluate_count + 2, row=y * 2, sticky=tk.W)
-
-        d = tk.Message(category_frame, text="", bg=colours[0], font=small_font)
-        d.grid(column=evaluate_count + 2, row=y * 2 + 1, sticky=tk.W + tk.E + tk.N + tk.S)
-        # d.grid_remove()
-
-        evaluate_radios[y].append(r)
-        evaluate_descriptions[y].append(d)
-
-        category_label = ttk.Label(category_frame, text=evaluation_parameter["label"], width=20)
-        category_label.grid(column=1, row=y * 2, sticky=tk.W)
-
-        evaluate_comment = tk.StringVar()
-        evaluate_comment_button = ttk.Button(category_frame, text="+Comment",
-                                             command=show_comment_dialog(evaluation_parameter["label"],
-                                                                         evaluate_comment))
-        evaluate_comment_button.grid(column=1, row=y * 2 + 1, sticky=tk.W + tk.N)
-        evaluate_comments.append(evaluate_comment)
-
-        y = y + 1
-
-result_label["text"] = get_result_string(0)
+initialize_values()
+build_evaluation_form()
 
 menu_bar = Menu(win)
 win.config(menu=menu_bar)
@@ -759,5 +983,10 @@ menu_bar.add_cascade(label="File", menu=file_menu)
 help_menu = Menu(menu_bar, tearoff=0)
 help_menu.add_command(label="About", command=menu_about)
 menu_bar.add_cascade(label="Help", menu=help_menu)
+
+add_new_student()
+select_student(0)
+update_student_menus()
+update_select_student_menu()
 
 win.mainloop()
