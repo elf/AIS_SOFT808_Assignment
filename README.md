@@ -4,7 +4,7 @@
 
 ## Objective of the Project
 
-The purpose of this project is to develop Windows Desktop App by python with tkinter. This is a part of learning User Experience Process as a group assignment on the Software User Experience courst at Auckland Inssitute of Studies.
+The purpose of this project is to develop Windows Desktop App by python with tkinter. This is a part of learning User Experience Process as a group assignment on the Software User Experience course at Auckland Institute of Studies.
 
 ## Objective of the app
 
